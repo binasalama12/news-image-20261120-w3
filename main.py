@@ -10,6 +10,7 @@ flat scenes, no photographs, no imported artwork.
 """
 
 import math
+import os
 import random
 from PIL import Image, ImageDraw, ImageFont
 
@@ -32,7 +33,11 @@ FL = "/usr/share/fonts/truetype/liberation/"
 def _font(path, size):
     try:
         return ImageFont.truetype(path, size)
-    except Exception:
+    except OSError:
+        pass
+    try:
+        return ImageFont.truetype(os.path.basename(path), size)
+    except OSError:
         return ImageFont.load_default()
 
 
@@ -752,8 +757,26 @@ def main():
 
     speckle(im)
     im = im.resize((1024, 1024), Image.LANCZOS)
-    im.save("entry.png")
-    print("saved entry.png 1024x1024")
+    candidates = []
+    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR")
+    if out_dir:
+        candidates.append(out_dir)
+    candidates.append(".")
+    candidates.append(os.path.dirname(os.path.abspath(__file__)))
+    last_err = None
+    saved = None
+    for cand in candidates:
+        try:
+            os.makedirs(cand, exist_ok=True)
+            target = os.path.join(cand, "entry.png")
+            im.save(target)
+            saved = target
+            break
+        except OSError as exc:
+            last_err = exc
+    if saved is None:
+        raise last_err
+    print("saved %s 1024x1024" % saved)
 
 
 if __name__ == "__main__":
